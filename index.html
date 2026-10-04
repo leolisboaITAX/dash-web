@@ -68,6 +68,18 @@ th.sort{cursor:pointer}
 .tools{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin-bottom:12px}
 .tools input[type=search]{min-width:min(100%,280px)}
 button.btn{font:inherit;font-size:14px;background:var(--accent);color:#fff;border:0;border-radius:8px;padding:8px 14px;cursor:pointer;min-height:36px}
+/* campo com sugestões (autocompletar) */
+.fld{font-size:11.5px;color:var(--text-2);display:flex;flex-direction:column;gap:3px;position:relative}
+.cbwrap{position:relative;display:flex}
+.cbwrap input{font:inherit;font-size:14px;color:var(--text-1);background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:7px 30px 7px 10px;min-height:36px;width:250px;max-width:100%}
+.cbx{position:absolute;right:3px;top:50%;transform:translateY(-50%);border:0;background:none;color:var(--text-2);font-size:19px;line-height:1;cursor:pointer;width:28px;height:28px;border-radius:6px}
+.cbx:hover{background:var(--grid);color:var(--text-1)}
+.combo ul{position:absolute;top:100%;left:0;margin:4px 0 0;padding:4px;list-style:none;min-width:100%;width:max-content;max-width:min(92vw,480px);max-height:290px;overflow:auto;background:var(--surface);border:1px solid var(--line);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.16);z-index:30}
+.combo li{display:flex;justify-content:space-between;gap:18px;padding:7px 10px;border-radius:6px;cursor:pointer;font-size:13.5px;color:var(--text-1)}
+.combo li small{color:var(--text-3);font-variant-numeric:tabular-nums;align-self:center}
+.combo li.ativo,.combo li:hover{background:var(--grid)}
+.combo li.vazio{color:var(--text-2);cursor:default}
+.combo li.vazio:hover{background:none}
 details{margin-top:24px;font-size:13px;color:var(--text-2)}
 details summary{cursor:pointer}
 details li{margin:4px 0}
@@ -142,6 +154,7 @@ const esc = s => String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>'
 const sum = (rows,f=r=>r.v) => rows.reduce((a,r)=>a+f(r),0);
 const madd = (m,n) => { const [y,mo]=m.split('-').map(Number); const t=y*12+mo-1+n; return Math.floor(t/12)+'-'+String(t%12+1).padStart(2,'0'); };
 const mrange = (a,b) => { const o=[]; let x=a; while(x<=b){o.push(x); x=madd(x,1);} return o; };
+const norm = s => String(s??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
 const sortDesc = (arr,f) => arr.slice().sort((a,b)=>f(b)-f(a));
 function groupSum(rows,keyf){ const m=new Map(); rows.forEach(r=>{const k=keyf(r); m.set(k,(m.get(k)||0)+r.v)}); return m; }
 function byMonth(rows){ const m={}; rows.forEach(r=>{m[r.m]=(m[r.m]||0)+r.v}); return m; }
@@ -278,25 +291,64 @@ function viewGeral(){
 }
 
 /* ---- Pesquisa ---- */
-const PQ = {q:'',cat:'',tipo:'',pl:'',sortK:'v',sortDir:-1};
+const PQ = {q:'',catTxt:'',tipo:'',plTxt:'',sortK:'v',sortDir:-1};
+/* Campo de digitar com sugestões embaixo. opcoes = [{v:'texto', n:quantidade}] */
+function comboBox(id, opcoes, inicial, aoMudar){
+  const inp=document.getElementById(id), ul=document.getElementById(id+'_list'), bx=document.getElementById(id+'_x');
+  let ativo=-1, itens=[];
+  inp.value=inicial; bx.hidden=!inicial;
+  const abrir=()=>{ ul.hidden=false; inp.setAttribute('aria-expanded','true'); };
+  const fechar=()=>{ ul.hidden=true; ativo=-1; inp.setAttribute('aria-expanded','false'); inp.removeAttribute('aria-activedescendant'); };
+  function desenhar(){
+    const q=norm(inp.value.trim());
+    itens=opcoes.filter(o=>!q||norm(o.v).includes(q));
+    const lista=itens.slice(0,120);
+    ul.innerHTML=lista.length
+      ? lista.map((o,i)=>`<li role="option" id="${id}_o${i}" data-i="${i}" class="${i===ativo?'ativo':''}"><span>${esc(o.v)}</span><small>${nf0.format(o.n)}</small></li>`).join('')
+        +(itens.length>lista.length?`<li class="vazio">+${itens.length-lista.length} opções: continue digitando</li>`:'')
+      : '<li class="vazio">Nenhuma sugestão</li>';
+  }
+  function escolher(o){ inp.value=o.v; bx.hidden=false; fechar(); aoMudar(o.v); }
+  function marcar(i){
+    if(!itens.length) return; ativo=(i+Math.min(itens.length,120))%Math.min(itens.length,120); desenhar();
+    const el=document.getElementById(id+'_o'+ativo); if(el){ el.scrollIntoView({block:'nearest'}); inp.setAttribute('aria-activedescendant',el.id); }
+  }
+  inp.addEventListener('focus',()=>{ desenhar(); abrir(); inp.select(); });
+  inp.addEventListener('input',()=>{ bx.hidden=!inp.value; ativo=-1; desenhar(); abrir(); aoMudar(inp.value); });
+  inp.addEventListener('keydown',e=>{
+    if(e.key==='ArrowDown'){ e.preventDefault(); if(ul.hidden){desenhar();abrir();} marcar(ativo+1); }
+    else if(e.key==='ArrowUp'){ e.preventDefault(); marcar(ativo-1); }
+    else if(e.key==='Enter'){ if(!ul.hidden){ e.preventDefault(); if(ativo>=0&&itens[ativo]) escolher(itens[ativo]); else fechar(); } }
+    else if(e.key==='Escape'){ fechar(); }
+  });
+  /* mousedown (e não click) para o campo não perder o foco antes da escolha */
+  ul.addEventListener('mousedown',e=>{ e.preventDefault(); const li=e.target.closest('li[data-i]'); if(li) escolher(itens[+li.dataset.i]); });
+  bx.addEventListener('click',()=>{ inp.value=''; bx.hidden=true; aoMudar(''); inp.focus(); });
+  inp.addEventListener('blur',()=>setTimeout(fechar,120));
+}
+
 function viewPesquisa(){
   const base=rowsPer();
-  const opts=(arr)=>'<option value="">Todos</option>'+[...new Set(arr)].filter(Boolean).sort().map(x=>`<option>${esc(x)}</option>`).join('');
+  const contar=(f)=>{ const m=new Map(); base.forEach(r=>{const k=f(r); if(k) m.set(k,(m.get(k)||0)+1);}); return [...m].map(([v,n])=>({v,n})).sort((a,b)=>a.v.localeCompare(b.v,'pt-BR')); };
+  const optCat=contar(r=>r.c), optPl=contar(r=>r.pl);
+  const setCat=new Set(optCat.map(o=>norm(o.v))), setPl=new Set(optPl.map(o=>norm(o.v)));
   const html=`
   <div class="card">
    <div class="tools">
     <label style="font-size:11.5px;color:var(--text-2);display:flex;flex-direction:column;gap:3px">Buscar<input type="search" id="pq" placeholder="item, fornecedor, placa, documento…" value="${esc(PQ.q)}"></label>
     <label style="font-size:11.5px;color:var(--text-2);display:flex;flex-direction:column;gap:3px">Tipo<select id="pt"><option value="">Todos</option><option value="D">Despesas</option><option value="R">Receitas</option></select></label>
-    <label style="font-size:11.5px;color:var(--text-2);display:flex;flex-direction:column;gap:3px">Categoria<select id="pc">${opts(base.map(r=>r.c))}</select></label>
-    <label style="font-size:11.5px;color:var(--text-2);display:flex;flex-direction:column;gap:3px">Plano financeiro<select id="pp">${opts(base.map(r=>r.pl))}</select></label>
+    <div class="fld combo"><label for="pc">Categoria</label><div class="cbwrap"><input type="text" id="pc" role="combobox" aria-expanded="false" aria-controls="pc_list" aria-autocomplete="list" autocomplete="off" placeholder="Todas · digite para buscar"><button type="button" class="cbx" id="pc_x" aria-label="Limpar categoria" hidden>×</button></div><ul id="pc_list" role="listbox" hidden></ul></div>
+    <div class="fld combo"><label for="pp">Plano financeiro</label><div class="cbwrap"><input type="text" id="pp" role="combobox" aria-expanded="false" aria-controls="pp_list" aria-autocomplete="list" autocomplete="off" placeholder="Todos · digite para buscar" style="width:320px"><button type="button" class="cbx" id="pp_x" aria-label="Limpar plano financeiro" hidden>×</button></div><ul id="pp_list" role="listbox" hidden></ul></div>
     <button class="btn" id="pcsv">Baixar CSV</button>
    </div>
    <div id="pinfo" class="note" style="margin:0 0 10px"></div>
    <div id="ptab"></div>
   </div>`;
-  function filt(){ const q=PQ.q.trim().toLowerCase();
-    return base.filter(r=>(!PQ.tipo||r.t===PQ.tipo)&&(!PQ.cat||r.c===PQ.cat)&&(!PQ.pl||r.pl===PQ.pl)&&
-      (!q||[r.it,r.fo,r.cl,r.doc,r.emp,r.gr,r.sg,r.pl].join(' ').toLowerCase().includes(q))); }
+  /* texto igual a uma opção = só essa opção; texto parcial = tudo que contém (sem acento) */
+  const casa=(valor,txt,conjunto)=>{ if(!txt) return true; const v=norm(valor); return conjunto.has(txt)? v===txt : v.includes(txt); };
+  function filt(){ const q=norm(PQ.q.trim()), ct=norm(PQ.catTxt.trim()), pt=norm(PQ.plTxt.trim());
+    return base.filter(r=>(!PQ.tipo||r.t===PQ.tipo)&&casa(r.c,ct,setCat)&&casa(r.pl,pt,setPl)&&
+      (!q||norm([r.it,r.fo,r.cl,r.doc,r.emp,r.gr,r.sg,r.pl].join(' ')).includes(q))); }
   function paint(){
     const f=filt().sort((a,b)=>{const k=PQ.sortK; const x=a[k]??'',y=b[k]??''; return (typeof x==='number'?x-y:String(x).localeCompare(String(y),'pt-BR'))*PQ.sortDir;});
     const heads=[['d','Data'],['doc','Documento'],['it','Item'],['pl','Plano financeiro'],['gr','Grupo'],['sg','Subgrupo'],['fo','Fornecedor'],['cl','Classificação'],['q','Qtd.'],['v','Valor'],['c','Categoria']];
@@ -308,11 +360,11 @@ function viewPesquisa(){
     return f;
   }
   return {html,draw(){
-    document.getElementById('pt').value=PQ.tipo; document.getElementById('pc').value=PQ.cat; document.getElementById('pp').value=PQ.pl;
+    document.getElementById('pt').value=PQ.tipo;
     document.getElementById('pq').oninput=e=>{PQ.q=e.target.value; paint();};
     document.getElementById('pt').onchange=e=>{PQ.tipo=e.target.value; paint();};
-    document.getElementById('pc').onchange=e=>{PQ.cat=e.target.value; paint();};
-    document.getElementById('pp').onchange=e=>{PQ.pl=e.target.value; paint();};
+    comboBox('pc',optCat,PQ.catTxt,t=>{PQ.catTxt=t; paint();});
+    comboBox('pp',optPl,PQ.plTxt,t=>{PQ.plTxt=t; paint();});
     document.getElementById('pcsv').onclick=()=>{ const f=paint(); const H=['Obra','Data','Documento','Empresa','Item','Plano financeiro','Grupo','Subgrupo','Fornecedor','Classificação','Quantidade','Valor','Tipo','Categoria'];
       const q=s=>'"'+String(s??'').replace(/"/g,'""')+'"';
       const lines=[H.map(q).join(';')].concat(f.map(r=>[r.o,r.d,r.doc,r.emp,r.it,r.pl,r.gr,r.sg,r.fo,r.cl,r.q==null?'':String(r.q).replace('.',','),String(r.v).replace('.',','),r.t==='R'?'Receita':'Despesa',r.c].map(q).join(';')));
