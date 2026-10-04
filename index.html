@@ -80,24 +80,31 @@ details li{margin:4px 0}
 .caixa h1{font-size:19px;margin:0;font-weight:650;letter-spacing:-.01em}
 .caixa p{margin:0;font-size:13.5px;color:var(--text-2)}
 .caixa label{font-size:11.5px;color:var(--text-2);margin-top:6px}
-.caixa input{font:inherit;font-size:16px;padding:10px 12px;border:1px solid var(--line);border-radius:8px;
-  background:var(--bg);color:var(--text-1);min-height:44px}
+.caixa input[type=password]{font:inherit;font-size:16px;padding:10px 12px;border:1px solid var(--line);
+  border-radius:8px;background:var(--bg);color:var(--text-1);min-height:44px;width:100%}
+.caixa label.check{display:flex;align-items:center;gap:8px;font-size:13.5px;color:var(--text-2);
+  margin-top:2px;cursor:pointer}
+.caixa label.check input{width:17px;height:17px;accent-color:var(--accent);margin:0;cursor:pointer}
 .caixa button{font:inherit;font-size:15px;font-weight:550;background:var(--accent);color:#fff;border:0;
   border-radius:8px;padding:11px 16px;cursor:pointer;min-height:44px;margin-top:6px}
 .caixa button[disabled]{opacity:.6;cursor:progress}
 .caixa .erro{color:var(--s8);font-size:13px}
 .caixa .rodape{font-size:12px;color:var(--text-3);margin-top:4px}
+.btnsair{font:inherit;font-size:13px;background:none;color:var(--text-2);border:1px solid var(--line);
+  border-radius:8px;padding:7px 12px;cursor:pointer;min-height:36px}
+.btnsair:hover{color:var(--text-1);border-color:var(--gray)}
 </style>
 </head>
 <body>
 <div id="trava" class="trava">
   <form id="formSenha" class="caixa" autocomplete="on">
     <h1>Custos de Obras</h1>
-    <p>Esta página é protegida. Digite a senha para ver os dados.</p>
+    <p id="txtTrava">Esta página é protegida. Digite a senha para ver os dados.</p>
     <label for="senha">Senha</label>
     <input id="senha" name="password" type="password" autocomplete="current-password" required autofocus>
+    <label class="check"><input type="checkbox" id="lembrar"> Lembrar neste computador</label>
     <button type="submit" id="btnEntrar">Entrar</button>
-    <p id="erroSenha" class="erro" hidden>Senha incorreta.</p>
+    <p id="erroSenha" class="erro" hidden></p>
     <p class="rodape">Os dados ficam criptografados. Sem a senha, nada é exibido.</p>
   </form>
 </div>
@@ -516,33 +523,90 @@ function init(){
   render();
 }
 
-/* ---------- abertura protegida por senha ---------- */
+/* ---------- abertura protegida por senha ----------
+   "Lembrar neste computador" NÃO guarda a senha: guarda só a chave de decifragem,
+   marcada como não exportável, que fica no navegador e nenhum script consegue ler. */
 const ITERACOES = 310000;
-async function abrir(senha){
+const BD = 'custos-obras', LOJA = 'chave';
+
+function comBanco(modo, fn){
+  return new Promise((ok, falha) => {
+    let req; try{ req = indexedDB.open(BD, 1); }catch(e){ return ok(null); }
+    req.onupgradeneeded = () => req.result.createObjectStore(LOJA);
+    req.onerror = () => ok(null);
+    req.onsuccess = () => {
+      try{
+        const t = req.result.transaction(LOJA, modo), r = fn(t.objectStore(LOJA));
+        t.oncomplete = () => { req.result.close(); ok(r ? r.result : null); };
+        t.onerror = () => { req.result.close(); ok(null); };
+      }catch(e){ ok(null); }
+    };
+  });
+}
+const lerChave      = () => comBanco('readonly',  l => l.get('k'));
+const guardarChave  = k  => comBanco('readwrite', l => l.put(k, 'k'));
+const esquecerChave = () => comBanco('readwrite', l => l.delete('k'));
+
+async function derivar(senha, salt){
+  const base = await crypto.subtle.importKey('raw', new TextEncoder().encode(senha), 'PBKDF2', false, ['deriveKey']);
+  return crypto.subtle.deriveKey(
+    {name:'PBKDF2', salt, iterations:ITERACOES, hash:'SHA-256'},
+    base, {name:'AES-GCM', length:256}, false, ['decrypt']);   /* false = não exportável */
+}
+async function lerArquivo(){
   const resp = await fetch('dados.enc', {cache:'no-store'});
   if(!resp.ok) throw new Error('arquivo');
-  const buf  = new Uint8Array(await resp.arrayBuffer());
-  const magica = new TextDecoder().decode(buf.slice(0,5));
-  if(magica !== 'ENCD1') throw new Error('arquivo');
-  const salt = buf.slice(5,21), iv = buf.slice(21,33), cifra = buf.slice(33);
-  const base = await crypto.subtle.importKey('raw', new TextEncoder().encode(senha), 'PBKDF2', false, ['deriveKey']);
-  const chave = await crypto.subtle.deriveKey(
-    {name:'PBKDF2', salt, iterations:ITERACOES, hash:'SHA-256'},
-    base, {name:'AES-GCM', length:256}, false, ['decrypt']);
-  const aberto = await crypto.subtle.decrypt({name:'AES-GCM', iv}, chave, cifra);   /* senha errada: lança */
+  const buf = new Uint8Array(await resp.arrayBuffer());
+  if(new TextDecoder().decode(buf.slice(0,5)) !== 'ENCD1') throw new Error('arquivo');
+  return {salt: buf.slice(5,21), iv: buf.slice(21,33), cifra: buf.slice(33)};
+}
+async function decifrar(chave, a){
+  const aberto = await crypto.subtle.decrypt({name:'AES-GCM', iv:a.iv}, chave, a.cifra);  /* chave errada: lança */
   const fluxo = new Blob([aberto]).stream().pipeThrough(new DecompressionStream('gzip'));
   return JSON.parse(await new Response(fluxo).text());
 }
+function entrar(dados, lembrado){
+  D = dados; R = D.linhas;
+  const t = document.getElementById('trava'); if(t) t.remove();
+  init();
+  const filtros = document.querySelector('header .filters');
+  if(filtros && !document.getElementById('btnSair')){
+    const w = document.createElement('label');
+    w.innerHTML = '<span>&nbsp;</span><button type="button" id="btnSair" class="btnsair">' +
+                  (lembrado ? 'Esquecer este computador' : 'Sair') + '</button>';
+    filtros.appendChild(w);
+    document.getElementById('btnSair').onclick = async () => { await esquecerChave(); location.reload(); };
+  }
+}
+
+/* já lembrado? abre direto */
+(async () => {
+  const trava = document.getElementById('trava');
+  try{
+    const chave = await lerChave();
+    if(!chave) return;
+    document.getElementById('txtTrava').textContent = 'Abrindo…';
+    const dados = await decifrar(chave, await lerArquivo());
+    entrar(dados, true);
+  }catch(e){
+    await esquecerChave();
+    if(trava && document.getElementById('txtTrava'))
+      document.getElementById('txtTrava').textContent = 'Esta página é protegida. Digite a senha para ver os dados.';
+  }
+})();
+
 document.getElementById('formSenha').addEventListener('submit', async (ev) => {
   ev.preventDefault();
   const btn = document.getElementById('btnEntrar'), erro = document.getElementById('erroSenha');
   const senha = document.getElementById('senha').value;
+  const lembrar = document.getElementById('lembrar').checked;
   erro.hidden = true; btn.disabled = true; btn.textContent = 'Abrindo…';
   try{
-    D = await abrir(senha);
-    R = D.linhas;
-    document.getElementById('trava').remove();
-    init();
+    const a = await lerArquivo();
+    const chave = await derivar(senha, a.salt);
+    const dados = await decifrar(chave, a);
+    if(lembrar) await guardarChave(chave);
+    entrar(dados, lembrar);
   }catch(e){
     erro.textContent = (e && e.message === 'arquivo')
       ? 'Não consegui carregar os dados. Recarregue a página.'
