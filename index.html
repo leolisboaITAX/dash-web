@@ -1,0 +1,558 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Custos de Obras ITAX</title>
+<style>
+:root{
+  color-scheme: light;
+  --bg:#f4f3f0; --surface:#fcfcfb; --text-1:#0b0b0b; --text-2:#52514e; --text-3:#7a7974;
+  --grid:#e6e5e1; --line:#dddcd7; --gray:#a3a29b; --accent:#2a78d6;
+  --s1:#2a78d6; --s2:#eb6834; --s3:#1baf7a; --s4:#eda100; --s5:#e87ba4; --s6:#008300; --s7:#4a3aa7; --s8:#e34948;
+}
+@media (prefers-color-scheme: dark){
+  :root:where(:not([data-theme="light"])){
+    color-scheme: dark;
+    --bg:#121211; --surface:#1a1a19; --text-1:#ffffff; --text-2:#c3c2b7; --text-3:#97968d;
+    --grid:#343432; --line:#3a3a37; --gray:#77766f; --accent:#3987e5;
+    --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500; --s5:#d55181; --s6:#008300; --s7:#9085e9; --s8:#e66767;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme: dark;
+  --bg:#121211; --surface:#1a1a19; --text-1:#ffffff; --text-2:#c3c2b7; --text-3:#97968d;
+  --grid:#343432; --line:#3a3a37; --gray:#77766f; --accent:#3987e5;
+  --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500; --s5:#d55181; --s6:#008300; --s7:#9085e9; --s8:#e66767;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--text-1);font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;padding:0 16px 48px}
+.wrap{max-width:1240px;margin:0 auto}
+header{padding:20px 0 12px;display:flex;flex-wrap:wrap;gap:12px 24px;align-items:flex-end;justify-content:space-between}
+h1{font-size:20px;margin:0;font-weight:650;letter-spacing:-.01em}
+h1 small{display:block;font-size:12.5px;font-weight:400;color:var(--text-2);margin-top:2px}
+.filters{display:flex;flex-wrap:wrap;gap:10px}
+.filters label{font-size:11.5px;color:var(--text-2);display:flex;flex-direction:column;gap:3px}
+select,input[type=search]{font:inherit;font-size:14px;color:var(--text-1);background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:7px 10px;min-height:36px;max-width:100%}
+select:focus,input:focus,button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+nav{display:flex;gap:4px;overflow-x:auto;border-bottom:1px solid var(--line);margin-bottom:18px;scrollbar-width:thin}
+nav button{font:inherit;font-size:14px;background:none;border:0;color:var(--text-2);padding:10px 14px;cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;margin-bottom:-1px}
+nav button[aria-selected=true]{color:var(--text-1);border-bottom-color:var(--accent);font-weight:600}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin-bottom:16px}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px 16px}
+.kpi .l{font-size:12px;color:var(--text-2)}
+.kpi .v{font-size:24px;font-weight:650;letter-spacing:-.02em;margin-top:2px;font-variant-numeric:tabular-nums}
+.kpi .s{font-size:12px;color:var(--text-2);margin-top:2px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,460px),1fr));gap:14px;margin-bottom:14px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px;min-width:0}
+.card h2{font-size:14px;margin:0 0 2px;font-weight:620}
+.card p.sub{font-size:12.5px;color:var(--text-2);margin:0 0 10px}
+.chart{position:relative;height:300px}
+.chart.tall{height:380px}
+.diag{background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:12px;padding:14px 18px;margin-bottom:16px}
+.diag h2{font-size:14px;margin:0 0 6px}
+.diag ul{margin:0;padding-left:18px}
+.diag li{margin:3px 0;font-size:14px}
+.tablewrap{overflow-x:auto;border-radius:8px}
+table{border-collapse:collapse;width:100%;font-size:13px;font-variant-numeric:tabular-nums}
+th,td{padding:7px 10px;text-align:right;border-bottom:1px solid var(--grid);white-space:nowrap}
+th{font-weight:600;color:var(--text-2);position:sticky;top:0;background:var(--surface);font-size:12px}
+th:first-child,td:first-child{text-align:left}
+td.l,th.l{text-align:left}
+tr.tot td{font-weight:650;border-top:2px solid var(--line)}
+th.sort{cursor:pointer}
+.note{font-size:12.5px;color:var(--text-2);margin:8px 0 0}
+.banner{background:var(--surface);border:1px dashed var(--line);border-radius:12px;padding:14px 18px;margin-bottom:14px;font-size:14px}
+.banner b{font-weight:620}
+.tools{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin-bottom:12px}
+.tools input[type=search]{min-width:min(100%,280px)}
+button.btn{font:inherit;font-size:14px;background:var(--accent);color:#fff;border:0;border-radius:8px;padding:8px 14px;cursor:pointer;min-height:36px}
+details{margin-top:24px;font-size:13px;color:var(--text-2)}
+details summary{cursor:pointer}
+details li{margin:4px 0}
+.swatch{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px;vertical-align:baseline}
+@media print{nav,.filters,.tools,button{display:none!important}body{background:#fff}.card,.kpi{break-inside:avoid}}
+
+.trava{position:fixed;inset:0;background:var(--bg);display:grid;place-items:center;padding:24px;z-index:50}
+.caixa{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:28px;width:min(100%,380px);
+  display:flex;flex-direction:column;gap:10px}
+.caixa h1{font-size:19px;margin:0;font-weight:650;letter-spacing:-.01em}
+.caixa p{margin:0;font-size:13.5px;color:var(--text-2)}
+.caixa label{font-size:11.5px;color:var(--text-2);margin-top:6px}
+.caixa input{font:inherit;font-size:16px;padding:10px 12px;border:1px solid var(--line);border-radius:8px;
+  background:var(--bg);color:var(--text-1);min-height:44px}
+.caixa button{font:inherit;font-size:15px;font-weight:550;background:var(--accent);color:#fff;border:0;
+  border-radius:8px;padding:11px 16px;cursor:pointer;min-height:44px;margin-top:6px}
+.caixa button[disabled]{opacity:.6;cursor:progress}
+.caixa .erro{color:var(--s8);font-size:13px}
+.caixa .rodape{font-size:12px;color:var(--text-3);margin-top:4px}
+</style>
+</head>
+<body>
+<div id="trava" class="trava">
+  <form id="formSenha" class="caixa" autocomplete="on">
+    <h1>Custos de Obras</h1>
+    <p>Esta página é protegida. Digite a senha para ver os dados.</p>
+    <label for="senha">Senha</label>
+    <input id="senha" name="password" type="password" autocomplete="current-password" required autofocus>
+    <button type="submit" id="btnEntrar">Entrar</button>
+    <p id="erroSenha" class="erro" hidden>Senha incorreta.</p>
+    <p class="rodape">Os dados ficam criptografados. Sem a senha, nada é exibido.</p>
+  </form>
+</div>
+
+<div class="wrap">
+<header>
+  <h1>Dashboard de Custos<small id="sub"></small></h1>
+  <div class="filters">
+    <label>Obra<select id="fObra"></select></label>
+    <label>De<select id="fDe"></select></label>
+    <label>Até<select id="fAte"></select></label>
+  </div>
+</header>
+<nav id="tabs" role="tablist"></nav>
+<main id="view"></main>
+<details id="qual"><summary>Dados e avisos</summary><div id="qualBody"></div></details>
+</div>
+
+<script src="chart.umd.min.js"></script>
+<script>
+let D = null;
+let R = [];
+
+/* ---------- utilidades ---------- */
+const nf0 = new Intl.NumberFormat('pt-BR',{maximumFractionDigits:0});
+const nf1 = new Intl.NumberFormat('pt-BR',{maximumFractionDigits:1});
+const nf2 = new Intl.NumberFormat('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+const brl = v => (v<0?'−':'')+'R$ '+nf0.format(Math.abs(v));
+const brl2 = v => (v<0?'−':'')+'R$ '+nf2.format(Math.abs(v));
+const mi = v => { const a=Math.abs(v), s=v<0?'−':''; return a>=1e6? s+'R$ '+nf2.format(a/1e6)+' mi' : a>=1e4? s+'R$ '+nf0.format(a/1e3)+' mil' : brl(v); };
+const pct = v => (isFinite(v)? nf1.format(v*100)+'%':'—');
+const MES = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+const ml = m => MES[+m.slice(5,7)-1]+'/'+m.slice(2,4);
+const esc = s => String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const sum = (rows,f=r=>r.v) => rows.reduce((a,r)=>a+f(r),0);
+const madd = (m,n) => { const [y,mo]=m.split('-').map(Number); const t=y*12+mo-1+n; return Math.floor(t/12)+'-'+String(t%12+1).padStart(2,'0'); };
+const mrange = (a,b) => { const o=[]; let x=a; while(x<=b){o.push(x); x=madd(x,1);} return o; };
+const sortDesc = (arr,f) => arr.slice().sort((a,b)=>f(b)-f(a));
+function groupSum(rows,keyf){ const m=new Map(); rows.forEach(r=>{const k=keyf(r); m.set(k,(m.get(k)||0)+r.v)}); return m; }
+function byMonth(rows){ const m={}; rows.forEach(r=>{m[r.m]=(m[r.m]||0)+r.v}); return m; }
+const arrFor = (months,obj) => months.map(m=>obj[m]||0);
+
+/* ---------- estado e filtros ---------- */
+let OBRAS = [];
+const S = {obra:'*', de:null, ate:null, tab:'geral'};
+function rowsObra(){ return R.filter(r=>S.obra==='*'||r.o===S.obra); }
+function rowsPer(){ return rowsObra().filter(r=>r.m>=S.de&&r.m<=S.ate); }
+const desp = rows => rows.filter(r=>r.t==='D');
+const rec = rows => rows.filter(r=>r.t==='R');
+function obraMonths(){ const ms=rowsObra().map(r=>r.m); return ms.length? mrange(ms.reduce((a,b)=>a<b?a:b), ms.reduce((a,b)=>a>b?a:b)) : []; }
+function period(){ return mrange(S.de,S.ate); }
+
+/* ---------- tema e gráficos ---------- */
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+function T(){ return {t1:css('--text-1'),t2:css('--text-2'),grid:css('--grid'),surf:css('--surface'),gray:css('--gray'),
+  s:[1,2,3,4,5,6,7,8].map(i=>css('--s'+i))}; }
+const charts = {};
+function mk(id,cfg){ if(charts[id]) charts[id].destroy(); const el=document.getElementById(id); if(!el) return; charts[id]=new Chart(el,cfg); }
+function killCharts(){ Object.keys(charts).forEach(k=>{charts[k].destroy(); delete charts[k];}); }
+function hatch(color,bg){ const c=document.createElement('canvas'); c.width=c.height=8; const x=c.getContext('2d');
+  x.fillStyle=bg; x.fillRect(0,0,8,8); x.strokeStyle=color; x.lineWidth=2.5; x.beginPath(); x.moveTo(-1,9); x.lineTo(9,-1); x.stroke(); return x.createPattern(c,'repeat'); }
+function baseOpts(o={}){
+  const th=T(); const unit=o.unit||'money';
+  const fmtTick = v => unit==='money'? (Math.abs(v)>=1e6? nf1.format(v/1e6)+' mi' : Math.abs(v)>=1e3? nf0.format(v/1e3)+' mil' : nf0.format(v)) : nf2.format(v);
+  const fmtVal = v => unit==='money'? brl(v) : unit==='rl'? 'R$ '+nf2.format(v)+'/L' : nf0.format(v);
+  const horiz=o.horizontal;
+  const valAxis = { stacked:!!o.stacked, grid:{color:th.grid}, border:{display:false}, ticks:{color:th.t2,callback:fmtTick,maxTicksLimit:6}, beginAtZero:true };
+  const catAxis = { stacked:!!o.stacked, grid:{display:false}, border:{color:th.grid}, ticks:{color:th.t2,autoSkip:false,maxRotation:horiz?0:45} };
+  return { responsive:true, maintainAspectRatio:false, indexAxis:horiz?'y':'x',
+    interaction:{mode:horiz?'nearest':'index',intersect:false,axis:horiz?'y':'x'},
+    scales: horiz? {x:valAxis,y:catAxis} : {x:catAxis,y:valAxis},
+    plugins:{
+      legend:{display:o.legend!==false,position:'bottom',labels:{color:th.t2,usePointStyle:true,pointStyle:'rectRounded',boxWidth:10,boxHeight:10,padding:14}},
+      tooltip:{backgroundColor:th.surf,titleColor:th.t1,bodyColor:th.t2,borderColor:th.grid,borderWidth:1,padding:10,
+        callbacks:{ label:c=>{ const v=horiz?c.parsed.x:c.parsed.y; return ' '+(c.dataset.label?c.dataset.label+': ':'')+fmtVal(v); },
+                    footer:items=>{ if(!o.stacked||items.length<2) return ''; return 'Total: '+fmtVal(items.reduce((a,i)=>a+(horiz?i.parsed.x:i.parsed.y),0)); } },
+        footerColor:th.t1 }
+    } };
+}
+function barChart(id,labels,datasets,o={}){
+  const th=T();
+  mk(id,{type:'bar',data:{labels,datasets:datasets.map(d=>({borderRadius:o.stacked?2:4,borderSkipped:o.stacked?false:'start',
+     borderColor:th.surf,borderWidth:o.stacked?2:0,maxBarThickness:46,...d}))},options:baseOpts(o)});
+}
+function lineChart(id,labels,datasets,o={}){
+  mk(id,{type:'line',data:{labels,datasets:datasets.map(d=>({tension:0,borderWidth:2,pointRadius:4,pointHoverRadius:6,pointBackgroundColor:d.borderColor,pointBorderColor:T().surf,pointBorderWidth:2,spanGaps:false,...d}))},options:baseOpts(o)});
+}
+
+/* cores fixas por entidade (nunca por ranking) */
+function catColor(c){ const s=T().s; return {'Equipe':s[2],'Freteiros':s[3],'Equip. locados (LOC)':s[4],'Equip. próprios':s[5],'Combustível':s[6],'Material betuminoso':s[7],'Obras complementares':s[0],'Massa asfáltica':s[1]}[c]||T().gray; }
+const CAT_FIXAS = ['Equipe','Freteiros','Equip. locados (LOC)','Equip. próprios','Combustível','Material betuminoso','Obras complementares','Massa asfáltica'];
+
+/* Baixar arquivo: na página publicada o navegador bloqueia o download direto,
+   então usamos a capacidade "downloads" do Claude quando ela existir. */
+let _dl=null,_dlPronto=false;
+(async()=>{ try{ _dl=await window.claude?.use?.('downloads'); }catch(e){} _dlPronto=true; })();
+async function baixarCSV(nome,texto){
+  const btn=document.getElementById('pcsv'), antes=btn?btn.textContent:'';
+  const aviso=m=>{ if(btn){ btn.textContent=m; setTimeout(()=>{btn.textContent=antes;},2600);} };
+  if(!_dlPronto) await new Promise(r=>setTimeout(r,500));
+  if(_dl){
+    try{ await _dl.save({filename:nome,data:new Blob([texto],{type:'text/csv'})}); }
+    catch(e){ if(!(e&&e.code==='declined')) aviso('Não foi possível baixar'); }
+    return;
+  }
+  try{
+    const b=new Blob([texto],{type:'text/csv;charset=utf-8'}), a=document.createElement('a');
+    a.href=URL.createObjectURL(b); a.download=nome; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+  }catch(e){ aviso('Não foi possível baixar'); }
+}
+
+/* ---------- componentes HTML ---------- */
+const kpi = (l,v,s='') => `<div class="kpi"><div class="l">${l}</div><div class="v">${v}</div><div class="s">${s}</div></div>`;
+function table(head,rows,opts={}){
+  const th=head.map((h,i)=>`<th class="${i===0||opts.left?.includes(i)?'l':''}">${esc(h)}</th>`).join('');
+  const tb=rows.map(r=>`<tr class="${r._tot?'tot':''}">`+r.cells.map((c,i)=>`<td class="${i===0||opts.left?.includes(i)?'l':''}">${c==='R$ 0'?'–':c}</td>`).join('')+'</tr>').join('');
+  return `<div class="tablewrap"><table><thead><tr>${th}</tr></thead><tbody>${tb}</tbody></table></div>`;
+}
+const delta = (a,b) => b? (a>=b?'▲ ':'▼ ')+pct(Math.abs(a-b)/Math.abs(b))+' vs mês ant.':'';
+function planoTipo(pl){ const p=pl.toUpperCase(); if(p.includes('DÉCIMO')||p.includes('DECIMO')) return '13º salário'; if(p.includes('FERIAS')||p.includes('FÉRIAS')) return 'Férias';
+  if(p.includes('RESCIS')) return 'Rescisão'; if(p.includes('FGTS')) return 'FGTS'; if(p.includes('INSS')) return 'INSS'; return 'Salário'; }
+
+/* ================= ABAS ================= */
+const TABS = [['geral','Visão geral'],['pesquisa','Pesquisa de custos'],['equipe','Equipe'],['frete','Freteiros'],['equip','Equipamentos'],['comb','Combustível'],['proj','Projeção'],['curvas','Curva S']];
+
+/* ---- Visão geral ---- */
+function viewGeral(){
+  const rows=rowsPer(), ms=period(), d=desp(rows), r=rec(rows);
+  const tD=sum(d), tR=sum(r), res=tR-tD;
+  const all=rowsObra(); const last=S.ate, prev=madd(S.ate,-1);
+  const dM=m=>sum(desp(all).filter(x=>x.m===m)), rM=m=>sum(rec(all).filter(x=>x.m===m));
+  const catM=m=>groupSum(desp(all).filter(x=>x.m===m),x=>x.c);
+  const c1=catM(last), c0=catM(prev); const dif=[...new Set([...c1.keys(),...c0.keys()])].map(k=>[k,(c1.get(k)||0)-(c0.get(k)||0)]).sort((a,b)=>b[1]-a[1]);
+  const bul=[];
+  bul.push(`<b>${ml(last)}:</b> despesas de ${brl(dM(last))}${dM(prev)? ' ('+(dM(last)>=dM(prev)?'alta':'queda')+' de '+pct(Math.abs(dM(last)-dM(prev))/dM(prev))+' sobre '+ml(prev)+')':''} e receita de ${brl(rM(last))}${rM(prev)?' ('+(rM(last)>=rM(prev)?'alta':'queda')+' de '+pct(Math.abs(rM(last)-rM(prev))/rM(prev))+')':''}.`);
+  if(dif.length>1 && dM(prev)>0){ const up=dif[0], dn=dif[dif.length-1];
+    if(up[1]>0) bul.push(`Maior alta de custo: <b>${esc(up[0])}</b> (+${brl(up[1])}).`);
+    if(dn[1]<0) bul.push(`Maior queda: <b>${esc(dn[0])}</b> (${brl(dn[1])}).`); }
+  const share=c=>tD? sum(d.filter(x=>x.c===c))/tD:0;
+  bul.push(`No período, Equipe é ${pct(share('Equipe'))} das despesas, Freteiros ${pct(share('Freteiros'))}, Equip. locados ${pct(share('Equip. locados (LOC)'))} e Equip. próprios ${pct(share('Equip. próprios'))}.`);
+  bul.push(`Resultado do período: <b>${brl(res)}</b> (margem ${pct(tR?res/tR:NaN)}).`);
+
+  // por categoria (barra horizontal)
+  const cat=sortDesc([...groupSum(d,x=>x.c)],e=>e[1]);
+  // despesa mensal empilhada: categorias fixas + demais
+  const th=T();
+  const mc={}; d.forEach(x=>{const k=CAT_FIXAS.includes(x.c)?x.c:'Demais'; (mc[k]=mc[k]||{}); mc[k][x.m]=(mc[k][x.m]||0)+x.v;});
+  const ordem=[...CAT_FIXAS,'Demais'].filter(k=>mc[k]);
+  const dsEmp=ordem.map(k=>({label:k,data:arrFor(ms,mc[k]),backgroundColor:k==='Demais'?th.gray:catColor(k)}));
+  // tabela mensal
+  const dm=byMonth(d), rm=byMonth(r);
+  const gpM=g=>byMonth(d.filter(x=>g.includes(x.gp)));
+  const dir=gpM(['DIR']), ind=gpM(['IND']), imp=gpM(['TR','IM']);
+  const linhas=ms.map(m=>({cells:[ml(m),brl(rm[m]||0),brl(dm[m]||0),brl((rm[m]||0)-(dm[m]||0)),pct((rm[m]||0)? ((rm[m]||0)-(dm[m]||0))/(rm[m]||0):NaN),brl(dir[m]||0),brl(ind[m]||0),brl(imp[m]||0)]}));
+  linhas.push({_tot:1,cells:['Total',brl(tR),brl(tD),brl(res),pct(tR?res/tR:NaN),brl(sum(Object.values(dir),x=>x)),brl(sum(Object.values(ind),x=>x)),brl(sum(Object.values(imp),x=>x))]});
+  const html=`
+  <div class="kpis">${kpi('Receita',mi(tR),`${ml(S.de)} a ${ml(S.ate)}`)}${kpi('Despesa',mi(tD),'Último mês: '+brl(dM(last))+(dM(prev)?' · '+delta(dM(last),dM(prev)):''))}${kpi('Resultado',mi(res),'Receita − despesa')}${kpi('Margem',pct(tR?res/tR:NaN),'Sobre a receita do período')}</div>
+  <div class="diag"><h2>Diagnóstico</h2><ul>${bul.map(b=>'<li>'+b+'</li>').join('')}</ul></div>
+  <div class="grid">
+    <div class="card"><h2>Receita × despesa por mês</h2><p class="sub">Valores lançados por data de emissão</p><div class="chart"><canvas id="c1"></canvas></div></div>
+    <div class="card"><h2>Despesa por categoria</h2><p class="sub">Total do período</p><div class="chart"><canvas id="c2"></canvas></div></div>
+  </div>
+  <div class="card" style="margin-bottom:14px"><h2>Despesa mensal por categoria</h2><p class="sub">Oito categorias principais; as demais ficam em “Demais”</p><div class="chart tall"><canvas id="c3"></canvas></div></div>
+  <div class="card"><h2>Resumo mensal</h2><p class="sub">DIR = despesa direta · IND = despesa indireta · Impostos = TR + IM</p>${table(['Mês','Receita','Despesa','Resultado','Margem','DIR','IND','Impostos'],linhas)}</div>`;
+  return {html,draw(){
+    barChart('c1',ms.map(ml),[{label:'Receita',data:arrFor(ms,rm),backgroundColor:th.s[0]},{label:'Despesa',data:arrFor(ms,dm),backgroundColor:th.s[1]}]);
+    barChart('c2',cat.map(e=>e[0]),[{label:'Despesa',data:cat.map(e=>e[1]),backgroundColor:th.s[0]}],{horizontal:true,legend:false});
+    barChart('c3',ms.map(ml),dsEmp,{stacked:true});
+  }};
+}
+
+/* ---- Pesquisa ---- */
+const PQ = {q:'',cat:'',tipo:'',pl:'',sortK:'v',sortDir:-1};
+function viewPesquisa(){
+  const base=rowsPer();
+  const opts=(arr)=>'<option value="">Todos</option>'+[...new Set(arr)].filter(Boolean).sort().map(x=>`<option>${esc(x)}</option>`).join('');
+  const html=`
+  <div class="card">
+   <div class="tools">
+    <label style="font-size:11.5px;color:var(--text-2);display:flex;flex-direction:column;gap:3px">Buscar<input type="search" id="pq" placeholder="item, fornecedor, placa, documento…" value="${esc(PQ.q)}"></label>
+    <label style="font-size:11.5px;color:var(--text-2);display:flex;flex-direction:column;gap:3px">Tipo<select id="pt"><option value="">Todos</option><option value="D">Despesas</option><option value="R">Receitas</option></select></label>
+    <label style="font-size:11.5px;color:var(--text-2);display:flex;flex-direction:column;gap:3px">Categoria<select id="pc">${opts(base.map(r=>r.c))}</select></label>
+    <label style="font-size:11.5px;color:var(--text-2);display:flex;flex-direction:column;gap:3px">Plano financeiro<select id="pp">${opts(base.map(r=>r.pl))}</select></label>
+    <button class="btn" id="pcsv">Baixar CSV</button>
+   </div>
+   <div id="pinfo" class="note" style="margin:0 0 10px"></div>
+   <div id="ptab"></div>
+  </div>`;
+  function filt(){ const q=PQ.q.trim().toLowerCase();
+    return base.filter(r=>(!PQ.tipo||r.t===PQ.tipo)&&(!PQ.cat||r.c===PQ.cat)&&(!PQ.pl||r.pl===PQ.pl)&&
+      (!q||[r.it,r.fo,r.cl,r.doc,r.emp,r.gr,r.sg,r.pl].join(' ').toLowerCase().includes(q))); }
+  function paint(){
+    const f=filt().sort((a,b)=>{const k=PQ.sortK; const x=a[k]??'',y=b[k]??''; return (typeof x==='number'?x-y:String(x).localeCompare(String(y),'pt-BR'))*PQ.sortDir;});
+    const heads=[['d','Data'],['doc','Documento'],['it','Item'],['pl','Plano financeiro'],['gr','Grupo'],['sg','Subgrupo'],['fo','Fornecedor'],['cl','Classificação'],['q','Qtd.'],['v','Valor'],['c','Categoria']];
+    document.getElementById('pinfo').innerHTML=`<b>${nf0.format(f.length)}</b> lançamentos · soma <b>${brl(sum(f))}</b> (despesas ${brl(sum(desp(f)))} · receitas ${brl(sum(rec(f)))})${f.length>300?' · mostrando os 300 primeiros pela ordenação atual':''}`;
+    const th=heads.map(([k,n])=>`<th class="sort ${['q','v'].includes(k)?'':'l'}" data-k="${k}">${n}${PQ.sortK===k?(PQ.sortDir<0?' ▼':' ▲'):''}</th>`).join('');
+    const tb=f.slice(0,300).map(r=>`<tr><td class="l">${r.d.split('-').reverse().join('/')}</td><td class="l">${esc(r.doc)}</td><td class="l">${esc(r.it)}</td><td class="l">${esc(r.pl)}</td><td class="l">${esc(r.gr)}</td><td class="l">${esc(r.sg)}</td><td class="l">${esc(r.fo)}</td><td class="l">${esc(r.cl)}</td><td>${r.q==null?'':nf1.format(r.q)}</td><td>${brl2(r.v)}</td><td class="l">${esc(r.c)}</td></tr>`).join('');
+    document.getElementById('ptab').innerHTML=`<div class="tablewrap" style="max-height:560px;overflow:auto"><table><thead><tr>${th}</tr></thead><tbody>${tb}</tbody></table></div>`;
+    document.querySelectorAll('#ptab th.sort').forEach(h=>h.onclick=()=>{ const k=h.dataset.k; if(PQ.sortK===k) PQ.sortDir*=-1; else {PQ.sortK=k; PQ.sortDir=['v','q'].includes(k)?-1:1;} paint(); });
+    return f;
+  }
+  return {html,draw(){
+    document.getElementById('pt').value=PQ.tipo; document.getElementById('pc').value=PQ.cat; document.getElementById('pp').value=PQ.pl;
+    document.getElementById('pq').oninput=e=>{PQ.q=e.target.value; paint();};
+    document.getElementById('pt').onchange=e=>{PQ.tipo=e.target.value; paint();};
+    document.getElementById('pc').onchange=e=>{PQ.cat=e.target.value; paint();};
+    document.getElementById('pp').onchange=e=>{PQ.pl=e.target.value; paint();};
+    document.getElementById('pcsv').onclick=()=>{ const f=paint(); const H=['Obra','Data','Documento','Empresa','Item','Plano financeiro','Grupo','Subgrupo','Fornecedor','Classificação','Quantidade','Valor','Tipo','Categoria'];
+      const q=s=>'"'+String(s??'').replace(/"/g,'""')+'"';
+      const lines=[H.map(q).join(';')].concat(f.map(r=>[r.o,r.d,r.doc,r.emp,r.it,r.pl,r.gr,r.sg,r.fo,r.cl,r.q==null?'':String(r.q).replace('.',','),String(r.v).replace('.',','),r.t==='R'?'Receita':'Despesa',r.c].map(q).join(';')));
+      baixarCSV('pesquisa_custos.csv','﻿'+lines.join('\r\n')); };
+    paint(); }};
+}
+
+/* ---- Equipe ---- */
+function viewEquipe(){
+  const ms=period(), rows=desp(rowsPer()), e=rows.filter(r=>r.c==='Equipe'), o=rows.filter(r=>r.c==='Outros de pessoal');
+  const tE=sum(e), tD=sum(rows); const em=byMonth(e); const last=em[S.ate]||0, prev=em[madd(S.ate,-1)]||0;
+  const tipos=['Salário','Férias','13º salário','Rescisão','FGTS','INSS'];
+  const piv={}; tipos.forEach(t=>piv[t]={}); e.forEach(r=>{const t=planoTipo(r.pl); piv[t][r.m]=(piv[t][r.m]||0)+r.v;});
+  const th=T();
+  const dirM=byMonth(e.filter(r=>r.gp==='DIR')), indM=byMonth(e.filter(r=>r.gp==='IND'));
+  const linhas=tipos.map(t=>({cells:[t,...ms.map(m=>brl(piv[t][m]||0)),brl(sum(Object.values(piv[t]),x=>x))]}));
+  linhas.push({_tot:1,cells:['Total equipe',...ms.map(m=>brl(em[m]||0)),brl(tE)]});
+  linhas.push({cells:['  do qual DIR',...ms.map(m=>brl(dirM[m]||0)),brl(sum(Object.values(dirM),x=>x))]});
+  linhas.push({cells:['  do qual IND',...ms.map(m=>brl(indM[m]||0)),brl(sum(Object.values(indM),x=>x))]});
+  const outrosPl=sortDesc([...groupSum(o,r=>r.pl.replace(/^(DIR|IND) - /,''))],x=>x[1]);
+  const html=`
+  <div class="kpis">${kpi('Equipe no período',mi(tE),'Salário, férias, 13º, rescisão, FGTS e INSS')}${kpi('Último mês ('+ml(S.ate)+')',brl(last),delta(last,prev))}${kpi('Média mensal',brl(ms.length?tE/ms.length:0),'Meses do filtro')}${kpi('% das despesas',pct(tD?tE/tD:NaN),'Equipe ÷ despesa total')}${kpi('Outros de pessoal (separado)',mi(sum(o)),'Sindical, trabalhista, seguro, temporários, uniformes')}</div>
+  <div class="grid">
+   <div class="card"><h2>Custo de equipe por mês</h2><p class="sub">Empilhado por tipo de lançamento</p><div class="chart tall"><canvas id="e1"></canvas></div></div>
+   <div class="card"><h2>Outros custos de pessoal (fora de “Equipe”)</h2><p class="sub">Total do período por plano financeiro</p><div class="chart tall"><canvas id="e2"></canvas></div></div>
+  </div>
+  <div class="card"><h2>Equipe por mês e tipo</h2><p class="sub">Valores por data de emissão</p>${table(['Tipo',...ms.map(ml),'Total'],linhas)}</div>`;
+  return {html,draw(){
+    barChart('e1',ms.map(ml),tipos.map((t,i)=>({label:t,data:arrFor(ms,piv[t]),backgroundColor:th.s[2+i]})),{stacked:true});
+    barChart('e2',outrosPl.map(x=>x[0]),[{label:'Valor',data:outrosPl.map(x=>x[1]),backgroundColor:th.s[2]}],{horizontal:true,legend:false});
+  }};
+}
+
+/* ---- Freteiros ---- */
+function viewFrete(){
+  const ms=period(), rows=desp(rowsPer()), f=rows.filter(r=>r.c==='Freteiros'), o=rows.filter(r=>r.c==='Outros transportes');
+  const th=T(); const fm=byMonth(f); const tF=sum(f);
+  const ativos=new Set(f.filter(r=>r.m===S.ate).map(r=>r.cl)).size;
+  const rank=sortDesc([...groupSum(f,r=>r.cl||'(sem identificação)')],x=>x[1]);
+  const piv={}; f.forEach(r=>{const k=r.cl||'(sem identificação)'; (piv[k]=piv[k]||{}); piv[k][r.m]=(piv[k][r.m]||0)+r.v;});
+  const linhas=rank.map(([k,t])=>({cells:[esc(k),...ms.map(m=>brl(piv[k][m]||0)),brl(t)]}));
+  linhas.push({_tot:1,cells:['Total',...ms.map(m=>brl(fm[m]||0)),brl(tF)]});
+  const html=`
+  <div class="kpis">${kpi('Transporte (freteiros)',mi(tF),'Plano DIR - Transporte terceirizado freteiros')}${kpi('Último mês ('+ml(S.ate)+')',brl(fm[S.ate]||0),delta(fm[S.ate]||0,fm[madd(S.ate,-1)]||0))}${kpi('Média mensal',brl(ms.length?tF/ms.length:0),'Meses do filtro')}${kpi('Freteiros ativos em '+ml(S.ate),nf0.format(ativos),'Placas com lançamento no mês')}${kpi('Outros transportes (separado)',mi(sum(o)),'Frete de produtos e transporte especial (IND)')}</div>
+  <div class="grid">
+   <div class="card"><h2>Transporte mensal</h2><p class="sub">Freteiros — valor por mês</p><div class="chart"><canvas id="f1"></canvas></div></div>
+   <div class="card"><h2>Maiores freteiros</h2><p class="sub">Até 15 maiores do período, por placa</p><div class="chart"><canvas id="f2"></canvas></div></div>
+  </div>
+  <div class="card"><h2>Freteiro por mês</h2><p class="sub">Todos os freteiros do período</p>${table(['Placa / identificação',...ms.map(ml),'Total'],linhas)}</div>`;
+  return {html,draw(){
+    barChart('f1',ms.map(ml),[{label:'Freteiros',data:arrFor(ms,fm),backgroundColor:catColor('Freteiros')}],{legend:false});
+    const top=rank.slice(0,15);
+    barChart('f2',top.map(x=>x[0]),[{label:'Valor',data:top.map(x=>x[1]),backgroundColor:catColor('Freteiros')}],{horizontal:true,legend:false});
+  }};
+}
+
+/* ---- Equipamentos ---- */
+function viewEquip(){
+  const ms=period(), rows=desp(rowsPer());
+  const L=rows.filter(r=>r.c==='Equip. locados (LOC)'), P=rows.filter(r=>r.c==='Equip. próprios'), O=rows.filter(r=>r.c==='Outros aluguéis');
+  const th=T(), lm=byMonth(L), pm=byMonth(P); const tL=sum(L), tP=sum(P);
+  const eq={}; [...L,...P].forEach(r=>{const k=r.cl||'(sem identificação)'; const e=(eq[k]=eq[k]||{k,tipo:r.c.includes('LOC')?'Locado':'Próprio',v:0,dir:0,ind:0,dias:0}); e.v+=r.v; if(r.gp==='DIR') e.dir+=r.v; else e.ind+=r.v; e.dias+=(r.it==='DIAS'&&r.q)?r.q:0;});
+  const lista=sortDesc(Object.values(eq),e=>e.v);
+  const top=lista.slice(0,15);
+  const linhas=lista.map(e=>({cells:[esc(e.k),e.tipo,brl(e.dir),brl(e.ind),brl(e.v),e.dias?nf0.format(e.dias):'—',e.dias?brl(e.v/e.dias):'—']}));
+  linhas.push({_tot:1,cells:['Total','',brl(sum(lista,e=>e.dir)),brl(sum(lista,e=>e.ind)),brl(tL+tP),'','']});
+  const html=`
+  <div class="kpis">${kpi('Locados (LOC)',mi(tL),'Aluguel de equipamentos de terceiros')}${kpi('Próprios',mi(tP),'Plano “Aluguel de equipamentos (próprios)”')}${kpi('% locado',pct((tL+tP)?tL/(tL+tP):NaN),'Locado ÷ (locado + próprio)')}${kpi('Último mês ('+ml(S.ate)+')',brl((lm[S.ate]||0)+(pm[S.ate]||0)),`Locados ${brl(lm[S.ate]||0)} · Próprios ${brl(pm[S.ate]||0)}`)}${kpi('Outros aluguéis (separado)',mi(sum(O)),'Ex.: banheiro químico')}</div>
+  <div class="grid">
+   <div class="card"><h2>Locados × próprios por mês</h2><p class="sub">Direto + indireto</p><div class="chart tall"><canvas id="q1"></canvas></div></div>
+   <div class="card"><h2>Equipamentos que mais pesam</h2><p class="sub">Até 15 maiores do período</p><div class="chart tall"><canvas id="q2"></canvas></div></div>
+  </div>
+  <div class="card"><h2>Detalhe por equipamento</h2><p class="sub">Dias vêm da coluna QUANTIDADE dos lançamentos “DIAS”; R$/dia = valor ÷ dias</p>${table(['Equipamento','Tipo','DIR','IND','Total','Dias','R$/dia'],linhas,{left:[1]})}</div>`;
+  return {html,draw(){
+    barChart('q1',ms.map(ml),[{label:'Locados (LOC)',data:arrFor(ms,lm),backgroundColor:catColor('Equip. locados (LOC)')},{label:'Próprios',data:arrFor(ms,pm),backgroundColor:catColor('Equip. próprios')}],{stacked:true});
+    barChart('q2',top.map(e=>e.k),[
+      {label:'Locados (LOC)',data:top.map(e=>e.tipo==='Locado'?e.v:0),backgroundColor:catColor('Equip. locados (LOC)')},
+      {label:'Próprios',data:top.map(e=>e.tipo==='Próprio'?e.v:0),backgroundColor:catColor('Equip. próprios')}],{horizontal:true,stacked:true});
+  }};
+}
+
+/* ---- Combustível ---- */
+function viewComb(){
+  const ms=period(), rows=desp(rowsPer()).filter(r=>r.c==='Combustível');
+  const th=T(); const cm=byMonth(rows); const tC=sum(rows);
+  const isL=r=>/^(DIESEL|GASOLINA|ETANOL)/i.test(r.it)&&r.q;
+  const lit=rows.filter(isL); const tL=sum(lit,r=>r.q), vL=sum(lit);
+  const itens=sortDesc([...groupSum(rows,r=>r.it)],x=>x[1]).map(x=>x[0]);
+  const fixos=itens.slice(0,4); const key=r=>fixos.includes(r.it)?r.it:'Demais itens';
+  const ser={}; rows.forEach(r=>{const k=key(r); (ser[k]=ser[k]||{}); ser[k][r.m]=(ser[k][r.m]||0)+r.v;});
+  const nomes=[...fixos,'Demais itens'].filter(k=>ser[k]);
+  const litM={}, valM={}; lit.forEach(r=>{const k=r.it; (litM[k]=litM[k]||{}); (valM[k]=valM[k]||{}); litM[k][r.m]=(litM[k][r.m]||0)+r.q; valM[k][r.m]=(valM[k][r.m]||0)+r.v;});
+  const prodL=sortDesc(Object.keys(litM),k=>sum(Object.values(valM[k]),x=>x)).slice(0,3);
+  const eq={}; rows.forEach(r=>{const k=r.cl||'(sem identificação)'; const e=(eq[k]=eq[k]||{k,v:0,l:0}); e.v+=r.v; if(isL(r)) e.l+=r.q;});
+  const lista=sortDesc(Object.values(eq),e=>e.v).slice(0,20);
+  const linhas=lista.map(e=>({cells:[esc(e.k),brl(e.v),e.l?nf0.format(e.l):'—',e.l?brl2(e.v/e.l):'—']}));
+  const html=`
+  <div class="kpis">${kpi('Combustível no período',mi(tC),'DIR + IND')}${kpi('Último mês ('+ml(S.ate)+')',brl(cm[S.ate]||0),delta(cm[S.ate]||0,cm[madd(S.ate,-1)]||0))}${kpi('Litros (diesel/gasolina)',nf0.format(tL),'Soma da QUANTIDADE')}${kpi('Preço médio',tL?'R$ '+nf2.format(vL/tL)+'/L':'—','Valor ÷ litros')}</div>
+  <div class="grid">
+   <div class="card"><h2>Gasto mensal por combustível</h2><p class="sub">Quatro maiores itens; resto em “Demais itens”</p><div class="chart tall"><canvas id="b1"></canvas></div></div>
+   <div class="card"><h2>Preço médio por litro</h2><p class="sub">Valor ÷ litros, por mês — útil para achar desvio de compra</p><div class="chart tall"><canvas id="b2"></canvas></div></div>
+  </div>
+  <div class="card"><h2>Maiores consumidores</h2><p class="sub">Até 20 classificações (equipamento/equipe) por valor</p>${table(['Classificação','Valor','Litros','R$/L'],linhas)}</div>`;
+  return {html,draw(){
+    barChart('b1',ms.map(ml),nomes.map((k,i)=>({label:k,data:arrFor(ms,ser[k]),backgroundColor:k==='Demais itens'?th.gray:th.s[2+i]})),{stacked:true});
+    lineChart('b2',ms.map(ml),prodL.map((k,i)=>({label:k,borderColor:th.s[2+i],backgroundColor:th.s[2+i],data:ms.map(m=>litM[k][m]? valM[k][m]/litM[k][m] : null)})),{unit:'rl'});
+  }};
+}
+
+/* ---- Projeção ---- */
+function viewProj(){
+  const all=desp(rowsObra()); const ms0=obraMonths(); const first=ms0[0]||S.ate;
+  const base=[madd(S.ate,-2),madd(S.ate,-1),S.ate].filter(m=>m>=first);
+  const prox=madd(S.ate,1); const n=base.length;
+  const W = n===3?[.2,.3,.5]: n===2?[.4,.6]:[1];
+  const cats=sortDesc([...groupSum(all.filter(r=>r.m>=base[0]&&r.m<=S.ate),r=>r.c)],x=>x[1]).map(x=>x[0]);
+  const val=(c,m)=>sum(all.filter(r=>r.c===c&&r.m===m));
+  function proj(vals){ const pm=vals.reduce((a,v,i)=>a+v*W[i],0);
+    return {pm,mn:Math.min(...vals),mx:Math.max(...vals)}; }
+  const linhas=cats.map(c=>{const v=base.map(m=>val(c,m)); const p=proj(v); return {c,v,...p};});
+  const totV=base.map((_,i)=>sum(linhas,l=>l.v[i]));
+  const tp=proj(totV);
+  const tab=linhas.map(l=>({cells:[esc(l.c),...l.v.map(brl),brl(l.pm),brl(l.mn)+' – '+brl(l.mx),brl(l.v[l.v.length-1])]}));
+  tab.push({_tot:1,cells:['Total despesas',...totV.map(brl),brl(tp.pm),brl(tp.mn)+' – '+brl(tp.mx),brl(totV[totV.length-1])]});
+  const recAll=rec(rowsObra()); const rv=base.map(m=>sum(recAll.filter(r=>r.m===m))); const rp=proj(rv);
+  const hist=mrange(first>madd(S.ate,-5)?first:madd(S.ate,-5),S.ate); const dm=byMonth(all); const th=T();
+  const globalLast=R.reduce((a,r)=>r.m>a?r.m:a,'0000-00'); const obraLast=ms0[ms0.length-1]||S.ate;
+  const aviso=obraLast<madd(globalLast,-1)?`<div class="banner"><b>Atenção:</b> esta obra não tem lançamentos recentes (último mês com dados: ${ml(obraLast)}). Se ela já encerrou, a projeção não se aplica.</div>`:'';
+  const html=aviso+`
+  <div class="banner">Projeção para <b>${ml(prox)}</b>, usando os ${n} últimos meses até <b>${ml(S.ate)}</b> (o último mês do filtro “Até” é tratado como mês fechado). ${n<3?'<b>Há menos de 3 meses de histórico: projeção pouco confiável.</b> ':''}Os valores são aproximados — o objetivo é dar ordem de grandeza.</div>
+  <div class="kpis">${kpi('Despesa projetada',mi(tp.pm),'Média ponderada (20% / 30% / 50%)')}${kpi('Faixa (mín – máx dos meses)',mi(tp.mn)+' – '+mi(tp.mx),'Menor e maior mês recentes')}${kpi('Último mês real ('+ml(S.ate)+')',mi(totV[totV.length-1]),'Para comparar com a projeção')}${kpi('Receita projetada',mi(rp.pm),'Receita é irregular: prefira a Curva S')}</div>
+  <div class="grid">
+   <div class="card"><h2>Despesa total: realizado e projeção</h2><p class="sub">Barra listrada = projeção base de ${ml(prox)}</p><div class="chart tall"><canvas id="p1"></canvas></div></div>
+   <div class="card"><h2>Projeção por categoria</h2><p class="sub">Projeção base (média ponderada)</p><div class="chart tall"><canvas id="p2"></canvas></div></div>
+  </div>
+  <div class="card"><h2>Detalhe da projeção</h2><p class="sub">Base: média ponderada, com peso maior nos meses mais recentes. Faixa: menor e maior valor dos meses usados.</p>${table(['Categoria',...base.map(ml),'Projeção base','Faixa (mín – máx)','Último mês'],tab)}
+  <p class="note">Impostos acompanham o faturamento; categorias pontuais (obras complementares, material) variam com o plano de trabalho do mês, então olhe a faixa e não só o valor base.</p></div>`;
+  return {html,draw(){
+    const labels=[...hist.map(ml),ml(prox)];
+    barChart('p1',labels,[{label:'Realizado',data:[...hist.map(m=>dm[m]||0),null],backgroundColor:th.s[1]},{label:'Projeção',data:[...hist.map(()=>null),tp.pm],backgroundColor:hatch(th.s[1],th.surf),borderColor:th.s[1],borderWidth:2}]);
+    const top=linhas.slice().sort((a,b)=>b.pm-a.pm).slice(0,12);
+    barChart('p2',top.map(l=>l.c),[{label:'Projeção',data:top.map(l=>l.pm),backgroundColor:th.s[1]}],{horizontal:true,legend:false});
+  }};
+}
+
+/* ---- Curva S ---- */
+function viewCurvaS(){
+  const all=rowsObra(); const ms0=obraMonths(); const th=T();
+  const plano=D.plano.filter(p=>S.obra==='*'||p.o===S.obra);
+  const pm={}; plano.forEach(p=>{pm[p.m]=(pm[p.m]||0)+p.v;});
+  const pms=Object.keys(pm).sort();
+  const ini=ms0[0]||S.ate; const fimDados=ms0[ms0.length-1]||S.ate;
+  const fim=pms.length&&pms[pms.length-1]>fimDados?pms[pms.length-1]:fimDados;
+  const ini2=pms.length&&pms[0]<ini?pms[0]:ini; const ms=mrange(ini2,fim);
+  const rm=byMonth(rec(all)), dm=byMonth(desp(all));
+  let a=0,b=0,c=0; const accR=[],accD=[],accP=[];
+  ms.forEach(m=>{ if(m<=fimDados){a+=rm[m]||0; b+=dm[m]||0; accR.push(a); accD.push(b);} else {accR.push(null);accD.push(null);} c+=pm[m]||0; accP.push(pms.length?c:null); });
+  const totPlan=sum(plano,p=>p.v); const iAte=ms.indexOf(S.ate); const rAte=iAte>=0&&accR[iAte]!=null?accR[iAte]:a; const pAte=iAte>=0&&accP[iAte]!=null?accP[iAte]:0;
+  const temPlano=pms.length>0;
+  const html=`
+  ${temPlano?'':`<div class="banner"><b>Curva S sem a linha planejada.</b> Faltam, no arquivo <b>dados/planejamento.csv</b>, as linhas de receita prevista por mês desta obra (modelo em <i>modelos/planejamento_modelo.csv</i>; o nome da obra deve ser idêntico ao da coluna CENTRO DE CUSTO). Enquanto isso, o gráfico mostra só a receita realizada e a despesa acumulada.</div>`}
+  <div class="kpis">${kpi('Receita realizada acumulada',mi(rAte),'Até '+ml(S.ate))}${temPlano?kpi('Receita planejada acumulada',mi(pAte),'Até '+ml(S.ate)):''}${temPlano?kpi('Desvio',mi(rAte-pAte),pAte?pct((rAte-pAte)/pAte)+' sobre o planejado':''):''}${temPlano?kpi('Avanço financeiro',pct(totPlan?rAte/totPlan:NaN),'Realizado ÷ total planejado ('+mi(totPlan)+')'):''}${kpi('Despesa acumulada',mi(accD[iAte>=0&&accD[iAte]!=null?iAte:accD.filter(x=>x!=null).length-1]||0),'Até '+ml(S.ate))}</div>
+  <div class="card"><h2>Curva S — receita acumulada</h2><p class="sub">Todo o histórico da obra (o filtro “De” não corta a curva). Planejado × realizado, com a despesa acumulada para referência.</p><div class="chart tall"><canvas id="s1"></canvas></div></div>
+  <div class="card" style="margin-top:14px"><h2>Tabela da curva</h2>${table(['Mês','Receita do mês','Receita acumulada',...(temPlano?['Planejado do mês','Planejado acumulado']:[]),'Despesa acumulada'],ms.map((m,i)=>({cells:[ml(m),m<=fimDados?brl(rm[m]||0):'—',accR[i]==null?'—':brl(accR[i]),...(temPlano?[brl(pm[m]||0),brl(accP[i]||0)]:[]),accD[i]==null?'—':brl(accD[i])]})))}</div>`;
+  return {html,draw(){
+    const ds=[{label:'Receita realizada',data:accR,borderColor:th.s[0],backgroundColor:th.s[0]}];
+    if(temPlano) ds.push({label:'Receita planejada',data:accP,borderColor:th.s[2],backgroundColor:th.s[2],borderDash:[6,4]});
+    ds.push({label:'Despesa acumulada',data:accD,borderColor:th.s[1],backgroundColor:th.s[1]});
+    lineChart('s1',ms.map(ml),ds);
+  }};
+}
+
+/* ---------- montagem ---------- */
+const VIEWS={geral:viewGeral,pesquisa:viewPesquisa,equipe:viewEquipe,frete:viewFrete,equip:viewEquip,comb:viewComb,proj:viewProj,curvas:viewCurvaS};
+function render(){
+  killCharts();
+  const v=VIEWS[S.tab]();
+  document.getElementById('view').innerHTML=v.html;
+  v.draw();
+  document.querySelectorAll('#tabs button').forEach(b=>b.setAttribute('aria-selected',b.dataset.t===S.tab));
+}
+function fillFilters(keepPeriod){
+  const fo=document.getElementById('fObra');
+  fo.innerHTML=(OBRAS.length>1?'<option value="*">Todas as obras</option>':'')+OBRAS.map(o=>`<option>${esc(o)}</option>`).join('');
+  fo.value=S.obra;
+  const ms=obraMonths();
+  if(!ms.length) return;
+  if(!keepPeriod||S.de<ms[0]||S.ate>ms[ms.length-1]||!S.de){ S.ate=ms[ms.length-1]; S.de=ms.length>24?ms[ms.length-24]:ms[0]; }
+  const opt=ms.map(m=>`<option value="${m}">${ml(m)}</option>`).join('');
+  document.getElementById('fDe').innerHTML=opt; document.getElementById('fAte').innerHTML=opt;
+  document.getElementById('fDe').value=S.de; document.getElementById('fAte').value=S.ate;
+}
+function init(){
+  OBRAS = [...new Set(R.map(r=>r.o))].sort();
+  S.obra = OBRAS.length>1?'*':OBRAS[0];
+  fillFilters(false);
+  document.getElementById('tabs').innerHTML=TABS.map(([k,n])=>`<button role="tab" data-t="${k}">${n}</button>`).join('');
+  document.querySelectorAll('#tabs button').forEach(b=>b.onclick=()=>{S.tab=b.dataset.t; render();});
+  document.getElementById('fObra').onchange=e=>{S.obra=e.target.value; fillFilters(false); render();};
+  document.getElementById('fDe').onchange=e=>{S.de=e.target.value; if(S.de>S.ate){S.ate=S.de; document.getElementById('fAte').value=S.ate;} render();};
+  document.getElementById('fAte').onchange=e=>{S.ate=e.target.value; if(S.ate<S.de){S.de=S.ate; document.getElementById('fDe').value=S.de;} render();};
+  const m=D.meta;
+  document.getElementById('sub').textContent=`${nf0.format(m.linhas_usadas)} lançamentos · atualizado em ${m.gerado_em}`;
+  document.getElementById('qualBody').innerHTML=`<ul><li>Arquivos lidos: ${m.arquivos.map(esc).join(', ')}</li><li>Linhas lidas: ${nf0.format(m.linhas_lidas)} · usadas: ${nf0.format(m.linhas_usadas)}</li>${m.alertas.map(a=>'<li>'+esc(a)+'</li>').join('')}</ul>`;
+  if(m.alertas.length) document.querySelector('#qual summary').textContent='Dados e avisos ('+m.alertas.length+')';
+  matchMedia('(prefers-color-scheme: dark)').addEventListener('change',render);
+  new MutationObserver(render).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
+  render();
+}
+
+/* ---------- abertura protegida por senha ---------- */
+const ITERACOES = 310000;
+async function abrir(senha){
+  const resp = await fetch('dados.enc', {cache:'no-store'});
+  if(!resp.ok) throw new Error('arquivo');
+  const buf  = new Uint8Array(await resp.arrayBuffer());
+  const magica = new TextDecoder().decode(buf.slice(0,5));
+  if(magica !== 'ENCD1') throw new Error('arquivo');
+  const salt = buf.slice(5,21), iv = buf.slice(21,33), cifra = buf.slice(33);
+  const base = await crypto.subtle.importKey('raw', new TextEncoder().encode(senha), 'PBKDF2', false, ['deriveKey']);
+  const chave = await crypto.subtle.deriveKey(
+    {name:'PBKDF2', salt, iterations:ITERACOES, hash:'SHA-256'},
+    base, {name:'AES-GCM', length:256}, false, ['decrypt']);
+  const aberto = await crypto.subtle.decrypt({name:'AES-GCM', iv}, chave, cifra);   /* senha errada: lança */
+  const fluxo = new Blob([aberto]).stream().pipeThrough(new DecompressionStream('gzip'));
+  return JSON.parse(await new Response(fluxo).text());
+}
+document.getElementById('formSenha').addEventListener('submit', async (ev) => {
+  ev.preventDefault();
+  const btn = document.getElementById('btnEntrar'), erro = document.getElementById('erroSenha');
+  const senha = document.getElementById('senha').value;
+  erro.hidden = true; btn.disabled = true; btn.textContent = 'Abrindo…';
+  try{
+    D = await abrir(senha);
+    R = D.linhas;
+    document.getElementById('trava').remove();
+    init();
+  }catch(e){
+    erro.textContent = (e && e.message === 'arquivo')
+      ? 'Não consegui carregar os dados. Recarregue a página.'
+      : 'Senha incorreta.';
+    erro.hidden = false;
+    btn.disabled = false; btn.textContent = 'Entrar';
+    document.getElementById('senha').select();
+  }
+});
+
+</script>
+</body>
+</html>
