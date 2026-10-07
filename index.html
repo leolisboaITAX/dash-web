@@ -67,6 +67,7 @@ th.sort{cursor:pointer}
 .banner b{font-weight:620}
 .tools{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin-bottom:12px}
 .tools input[type=search]{min-width:min(100%,280px)}
+.tools input[type=number]{font:inherit;font-size:14px;color:var(--text-1);background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:7px 10px;min-height:36px;width:130px}
 button.btn{font:inherit;font-size:14px;background:var(--accent);color:#fff;border:0;border-radius:8px;padding:8px 14px;cursor:pointer;min-height:36px}
 /* campo com sugestões (autocompletar) */
 .fld{font-size:11.5px;color:var(--text-2);display:flex;flex-direction:column;gap:3px;position:relative}
@@ -242,7 +243,7 @@ function planoTipo(pl){ const p=pl.toUpperCase(); if(p.includes('DÉCIMO')||p.in
   if(p.includes('RESCIS')) return 'Rescisão'; if(p.includes('FGTS')) return 'FGTS'; if(p.includes('INSS')) return 'INSS'; return 'Salário'; }
 
 /* ================= ABAS ================= */
-const TABS = [['geral','Visão geral'],['pesquisa','Pesquisa de custos'],['equipe','Equipe'],['frete','Freteiros'],['equip','Equipamentos'],['comb','Combustível'],['proj','Projeção'],['curvas','Curva S']];
+const TABS = [['geral','Visão geral'],['pesquisa','Pesquisa de custos'],['equipe','Equipe'],['frete','Freteiros'],['tkm','Frete R$/t·km'],['equip','Equipamentos'],['comb','Combustível'],['proj','Projeção'],['curvas','Curva S']];
 
 /* ---- Visão geral ---- */
 function viewGeral(){
@@ -421,6 +422,78 @@ function viewFrete(){
   }};
 }
 
+
+/* ---- Frete R$/t·km: pago x tabela praticada x simulação de reajuste ---- */
+const FK = {reaj:'', fixo:''};
+const placaDe = cl => String(cl||'').toUpperCase().replace(/^F\s*-\s*/,'').trim();
+const nf3 = new Intl.NumberFormat('pt-BR',{minimumFractionDigits:3,maximumFractionDigits:3});
+const rtk = v => v==null||!isFinite(v)? '–' : 'R$ '+nf3.format(v);
+function precoTabela(x){   /* tabela vigente no mês (a mais recente com vigência <= mês) para material × veículo × modalidade */
+  const c=(D.tabfrete||[]).filter(y=>y.ch===x.ch&&y.vig<=x.m).sort((p,q)=>q.vig.localeCompare(p.vig))[0]; return c? c.v : null;
+}
+function viewTkm(){
+  const ms=period(), set=new Set(ms);
+  const vk=(D.fretekm||[]).filter(x=>set.has(x.m)&&(S.obra==='*'||x.o===S.obra));
+  const pago=desp(rowsPer()).filter(r=>r.c==='Freteiros');
+  const temTab=(D.tabfrete||[]).length>0;
+  const banner=vk.length?'':`<div class="banner"><b>Esta aba ainda não tem toneladas e km.</b> A base de custos traz só o valor da medição de cada freteiro (sem toneladas e sem km). Para calcular R$/t·km, envie o arquivo <b>frete_ton_km.csv</b> (obra; mes; placa; material; veiculo; modalidade; toneladas; km — modelo: <i>frete_ton_km_modelo.csv</i>). A tabela da empresa já está cadastrada em <b>tabela_frete.csv</b> (vigência a partir de set/2026). O nome da obra deve ser idêntico ao do CENTRO DE CUSTO.</div>`;
+  const html=`${banner}
+  <div class="card"><h2>Simulação de reajuste</h2><p class="sub">Base de comparação: ${temTab?'tabela praticada pela empresa':'valor realmente pago (não há tabela cadastrada)'} · t·km = toneladas × km</p>
+   <div class="tools"><label class="fld">Reajuste (%)<input type="number" id="kr" step="0.5" placeholder="ex.: 5" value="${esc(FK.reaj)}"></label>
+   <label class="fld">ou novo preço fixo (R$/t·km)<input type="number" id="kf" step="0.001" placeholder="opcional" value="${esc(FK.fixo)}" style="width:180px"></label>
+   <span class="note" style="margin:0 0 6px">Preço fixo, se preenchido, vale no lugar do reajuste.</span></div>
+   <div id="kres"></div></div>`;
+  function calc(){
+    const reaj=parseFloat(String(FK.reaj).replace(',','.')), fixo=parseFloat(String(FK.fixo).replace(',','.'));
+    const fator=isFinite(reaj)?1+reaj/100:1, usaFixo=isFinite(fixo)&&fixo>0;
+    const ln=vk.map(x=>{
+      const p=pago.filter(r=>r.o===x.o&&r.m===x.m&&(!x.p||placaDe(r.cl)===x.p));
+      const vp=sum(p), tk=x.t*x.k, tab=precoTabela(x);
+      return {...x,tk,vp,real:tk?vp/tk:null,tab,base:tab??(tk?vp/tk:null)};
+    });
+    ln.forEach(l=>{ l.sim=usaFixo?fixo:(l.base==null?null:l.base*fator); l.vsim=l.sim==null?null:l.sim*l.tk; l.vtab=l.tab==null?null:l.tab*l.tk; });
+    return {ln,usaFixo,reaj};
+  }
+  function agrupa(ln,keyf){
+    const m=new Map(); ln.forEach(l=>{const k=keyf(l); const a=m.get(k)||{t:0,tk:0,vp:0,vtab:0,tkTab:0,vsim:0};
+      a.t+=l.t; a.tk+=l.tk; a.vp+=l.vp; if(l.vtab!=null){a.vtab+=l.vtab; a.tkTab+=l.tk;} if(l.vsim!=null)a.vsim+=l.vsim; m.set(k,a);}); return m;
+  }
+  function pinta(){
+    const {ln,usaFixo,reaj}=calc(); const el=document.getElementById('kres');
+    if(!ln.length){ el.innerHTML='<p class="note">Sem toneladas/km no período e obra selecionados.</p>'; killCharts(); return; }
+    const tot=agrupa(ln,()=>'x').get('x');
+    const cobre=sum(pago), casado=tot.vp;
+    const mPago=tot.tk?tot.vp/tot.tk:null, mTab=tot.tkTab?tot.vtab/tot.tkTab:null, mSim=tot.tk?tot.vsim/tot.tk:null;
+    const imp=tot.vsim-tot.vp;
+    const rot=usaFixo?'Preço fixo simulado':(isFinite(reaj)&&reaj!==0?'Simulado ('+(reaj>0?'+':'')+nf1.format(reaj)+'%)':'Simulado (sem reajuste)');
+    const porMes=agrupa(ln,l=>l.m), meses=ms.filter(m=>porMes.has(m));
+    const porMat=[...agrupa(ln,l=>[l.mt,l.ve,l.mo].filter(Boolean).join(' · ')||'(não informado)')].sort((a,b)=>b[1].vp-a[1].vp);
+    const porPlaca=[...agrupa(ln,l=>l.p||'(obra toda)')].sort((a,b)=>b[1].vp-a[1].vp);
+    const linha=(k,a)=>{ const rp=a.tk?a.vp/a.tk:null, rt=a.tkTab?a.vtab/a.tkTab:null, rs=a.tk?a.vsim/a.tk:null;
+      return {cells:[esc(k),nf0.format(a.t),nf1.format(a.tk?a.tk/a.t:0),nf0.format(a.tk),brl(a.vp),rtk(rp),rtk(rt),rtk(rs),brl(a.vsim),(a.vsim-a.vp>=0?'+':'')+brl(a.vsim-a.vp)]}; };
+    const H=['t','km médio','t·km','Pago','R$/t·km pago','R$/t·km tabela','R$/t·km simulado','Custo simulado','Simulado − pago'];
+    el.innerHTML=`<div class="kpis">${kpi('Pago (com t e km informados)',brl(casado),cobre>0?pct(casado/cobre)+' do frete do período':'')}${kpi('Toneladas × km',nf0.format(tot.tk)+' t·km',nf0.format(tot.t)+' t')}${kpi('R$/t·km pago',rtk(mPago),'Pago ÷ t·km')}${kpi('R$/t·km tabela',rtk(mTab),temTab?'Média ponderada por t·km':'Tabela não cadastrada')}${kpi(rot,rtk(mSim),'Custo '+brl(tot.vsim))}${kpi('Impacto vs. pago',(imp>=0?'+':'')+brl(imp),'Simulado − pago no período')}</div>
+     <div class="grid"><div class="card"><h2>R$/t·km por mês</h2><p class="sub">Pago, tabela praticada e simulado</p><div class="chart"><canvas id="k1"></canvas></div></div>
+     <div class="card"><h2>Por freteiro (placa)</h2><p class="sub">R$/t·km pago nos maiores, com o simulado ao lado</p><div class="chart"><canvas id="k2"></canvas></div></div></div>
+     <div class="card"><h2>Por mês</h2>${table(['Mês',...H],meses.map(m=>linha(ml(m),porMes.get(m))))}</div>
+     <div class="card"><h2>Por material, veículo e modalidade</h2><p class="sub">Tabela só se aplica onde há preço vigente cadastrado para o mês</p>${table(['Material · veículo · modalidade',...H],porMat.map(([k,a])=>linha(k,a)))}</div>
+     <div class="card"><h2>Por freteiro</h2>${table(['Placa',...H],porPlaca.map(([k,a])=>linha(k,a)))}</div>`;
+    const th=T(), s=th.s;
+    const pm=m=>{const a=porMes.get(m); return a&&a.tk?a.vp/a.tk:null;}, tm=m=>{const a=porMes.get(m); return a&&a.tkTab?a.vtab/a.tkTab:null;}, sm=m=>{const a=porMes.get(m); return a&&a.tk?a.vsim/a.tk:null;};
+    const ds=[{label:'Pago',data:meses.map(pm),borderColor:s[3],backgroundColor:s[3]}];
+    if(temTab) ds.push({label:'Tabela',data:meses.map(tm),borderColor:s[0],backgroundColor:s[0]});
+    ds.push({label:'Simulado',data:meses.map(sm),borderColor:s[1],backgroundColor:s[1],borderDash:[6,4]});
+    lineChart('k1',meses.map(ml),ds,{unit:'num',legend:true});
+    const top=porPlaca.slice(0,12);
+    barChart('k2',top.map(x=>x[0]),[{label:'Pago',data:top.map(([,a])=>a.tk?a.vp/a.tk:0),backgroundColor:s[3]},{label:'Simulado',data:top.map(([,a])=>a.tk?a.vsim/a.tk:0),backgroundColor:s[1]}],{horizontal:true,unit:'num',legend:true});
+  }
+  return {html,draw(){
+    document.getElementById('kr').oninput=e=>{FK.reaj=e.target.value; pinta();};
+    document.getElementById('kf').oninput=e=>{FK.fixo=e.target.value; pinta();};
+    pinta();
+  }};
+}
+
 /* ---- Equipamentos ---- */
 function viewEquip(){
   const ms=period(), rows=desp(rowsPer());
@@ -538,7 +611,7 @@ function viewCurvaS(){
 }
 
 /* ---------- montagem ---------- */
-const VIEWS={geral:viewGeral,pesquisa:viewPesquisa,equipe:viewEquipe,frete:viewFrete,equip:viewEquip,comb:viewComb,proj:viewProj,curvas:viewCurvaS};
+const VIEWS={geral:viewGeral,pesquisa:viewPesquisa,equipe:viewEquipe,frete:viewFrete,tkm:viewTkm,equip:viewEquip,comb:viewComb,proj:viewProj,curvas:viewCurvaS};
 function render(){
   killCharts();
   const v=VIEWS[S.tab]();
